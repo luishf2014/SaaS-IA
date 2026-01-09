@@ -3,7 +3,11 @@
  * 
  * Funções helper para proteger rotas baseadas em permissões
  * Use estas funções em Server Components para verificar acesso antes de renderizar
+ * 
+ * FASE 6: SERVER-ONLY - Este módulo nunca deve ser importado em Client Components
  */
+
+import 'server-only';
 
 import { redirect } from 'next/navigation';
 import { checkPermission, checkAnyPermission } from './check';

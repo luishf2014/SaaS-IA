@@ -81,7 +81,16 @@ src/
 - RBAC nunca cria dados, apenas consome
 - `null` significa acesso BLOQUEADO (sem fallback)
 
-### ⏳ FASE 6: Dashboard Funcional
+### ✅ FASE 6: UI Administrativa Baseada em RBAC (CONCLUÍDA)
+- Área administrativa (`/admin`) protegida por RBAC
+- Páginas administrativas usam `requireRoutePermission()`
+- UI consome decisões do RBAC (mostra/esconde elementos)
+- Gestão básica de usuários (visualização)
+- Componente `IfHasPermission` para renderização condicional
+- Segurança sempre no server-side, UI apenas reflete permissões
+- **RBAC explicitamente SERVER-ONLY** - toda lógica de segurança protegida por `server-only`
+
+### ⏳ FASE 7: Dashboard Funcional
 - Métricas financeiras (receita, despesas, lucro)
 - Gráficos por período
 - Dados reais do banco
@@ -376,4 +385,113 @@ Para validar que o RBAC real está funcionando:
 
 ---
 
-**Status**: FASE 5 concluída ✅ | Próxima fase: Dashboard Funcional
+## ✅ Validação da FASE 6 (UI Administrativa Baseada em RBAC)
+
+Para validar que a UI administrativa está funcionando:
+
+### Pré-requisitos
+
+1. **Execute a migração SQL** (se ainda não executou):
+   - Execute `supabase/migrations/001_create_companies_and_profiles.sql` no Supabase
+
+2. **Tenha um usuário admin**:
+   - No Supabase Table Editor, altere `profiles.role` para 'admin' para um usuário
+   - Ou crie um novo usuário e altere o role manualmente
+
+### Testes de Validação
+
+1. **Teste com usuário 'user'**:
+   - Faça login com um usuário que tenha role 'user'
+   - Acesse `/dashboard` - deve funcionar normalmente
+   - **NÃO deve aparecer** o botão "Admin" no header
+   - Tente acessar `/admin` diretamente - deve ser redirecionado para `/dashboard`
+
+2. **Teste com usuário 'admin'**:
+   - Faça login com um usuário que tenha role 'admin'
+   - Acesse `/dashboard` - deve aparecer o botão "Admin" no header
+   - Clique em "Admin" ou acesse `/admin` diretamente - deve carregar a página administrativa
+   - Acesse `/admin/users` - deve mostrar a listagem de usuários da empresa
+
+3. **Teste de proteção server-side**:
+   - Mesmo que um usuário 'user' tente acessar `/admin` diretamente pela URL,
+     o server-side deve bloquear e redirecionar para `/dashboard`
+   - A segurança não depende da UI, sempre é garantida no server
+
+**Arquivos criados na FASE 6:**
+- `src/app/(admin)/admin/page.tsx` - Página administrativa principal
+- `src/app/(admin)/admin/users/page.tsx` - Página de gestão de usuários
+- `src/lib/rbac/ui.tsx` - Componente `IfHasPermission` para renderização condicional
+- `src/app/(dashboard)/dashboard/page.tsx` - Atualizado com link para área admin
+
+**O que a FASE 6 implementa:**
+
+1. **Proteção de Rotas (Server-Side)**:
+   ```typescript
+   // Todas as páginas admin usam requireRoutePermission()
+   await requireRoutePermission(PERMISSIONS.ADMIN_PANEL);
+   ```
+
+2. **Renderização Condicional (UI)**:
+   ```typescript
+   // Verificar permissão no server-side para mostrar/esconder elementos
+   const hasAdminAccess = await checkPermission(PERMISSIONS.ADMIN_PANEL);
+   {hasAdminAccess && <Link href="/admin">Admin</Link>}
+   ```
+
+3. **Componente Helper**:
+   ```typescript
+   // Componente para renderização condicional baseada em permissão
+   <IfHasPermission permission={PERMISSIONS.ADMIN_PANEL}>
+     <AdminButton />
+   </IfHasPermission>
+   ```
+
+**Garantias da FASE 6:**
+- ✅ Rotas administrativas protegidas no server-side
+- ✅ UI apenas consome decisões do RBAC (não cria regras)
+- ✅ Nenhuma lógica de acesso duplicada
+- ✅ Segurança sempre garantida no server
+- ✅ UI reflete permissões sem quebrar segurança
+- ✅ Código limpo e previsível
+- ✅ **RBAC explicitamente SERVER-ONLY** - módulos protegidos por `import 'server-only'`
+
+**Importante:**
+- A UI apenas controla VISIBILIDADE, nunca segurança
+- Toda decisão de acesso ocorre no server-side
+- RBAC continua sendo a fonte única da verdade
+- Nenhuma permissão hardcoded na UI
+- **Módulos RBAC são SERVER-ONLY** - não podem ser importados em Client Components
+- Tentar importar RBAC em Client Component causará erro em build-time
+
+**Arquitetura de Segurança:**
+
+```
+┌─────────────────────────────────────────┐
+│  Client Components                      │
+│  ❌ NÃO pode importar RBAC              │
+│  ✅ Pode receber props de Server        │
+└─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  Server Components                      │
+│  ✅ Pode usar requireRoutePermission()   │
+│  ✅ Pode usar checkPermission()         │
+│  ✅ Pode usar IfHasPermission           │
+└─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│  RBAC Modules (SERVER-ONLY)             │
+│  ✅ check.ts                            │
+│  ✅ user.ts                             │
+│  ✅ route-guard.ts                      │
+│  ✅ ui.tsx                              │
+│  ❌ types.ts (apenas tipos, sem lógica)│
+│  ❌ permissions.ts (funções puras)      │
+└─────────────────────────────────────────┘
+```
+
+---
+
+**Status**: FASE 6 concluída ✅ | Próxima fase: Dashboard Funcional

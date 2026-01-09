@@ -3,7 +3,11 @@
  * 
  * Funções helper para verificar permissões em Server Components e Server Actions
  * Todas as verificações de permissão devem usar estas funções
+ * 
+ * FASE 6: SERVER-ONLY - Este módulo nunca deve ser importado em Client Components
  */
+
+import 'server-only';
 
 import { getUserRole } from './user';
 import { roleHasPermission, roleHasAllPermissions, roleHasAnyPermission } from './permissions';

@@ -10,7 +10,11 @@
  * - Se profile não existir, retorna null (acesso BLOQUEADO)
  * - Nenhum fallback automático (não assume 'user' ou qualquer valor default)
  * - null significa acesso BLOQUEADO em todas as verificações
+ * 
+ * FASE 6: SERVER-ONLY - Este módulo nunca deve ser importado em Client Components
  */
+
+import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
 import type { Role } from './types';

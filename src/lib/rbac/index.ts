@@ -33,3 +33,6 @@ export {
   requireRoutePermission,
   requireAnyRoutePermission,
 } from './route-guard';
+
+// UI Components (FASE 6)
+export { IfHasPermission } from './ui';

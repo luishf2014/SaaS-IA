@@ -12,9 +12,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { signOut } from '@/app/(auth)/actions';
-import { requireRoutePermission } from '@/lib/rbac';
-import { PERMISSIONS } from '@/lib/rbac';
+import { requireRoutePermission, checkPermission, PERMISSIONS } from '@/lib/rbac';
 import { getUserProfile } from '@/lib/profile';
+import Link from 'next/link';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -42,6 +42,9 @@ export default async function DashboardPage() {
     redirect('/');
   }
 
+  // FASE 6: Verificar permissão para mostrar link administrativo (apenas UI)
+  const hasAdminAccess = await checkPermission(PERMISSIONS.ADMIN_PANEL);
+
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Header */}
@@ -54,14 +57,24 @@ export default async function DashboardPage() {
                 Inteligência de Negócios com IA
               </p>
             </div>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                Sair
-              </button>
-            </form>
+            <div className="flex items-center gap-4">
+              {hasAdminAccess && (
+                <Link
+                  href="/admin"
+                  className="px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300 hover:bg-slate-800 rounded-lg transition-colors border border-blue-800"
+                >
+                  Admin
+                </Link>
+              )}
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  Sair
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </header>
