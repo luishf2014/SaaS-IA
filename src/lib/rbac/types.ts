@@ -31,8 +31,9 @@ export const PERMISSIONS = {
   // Upload CSV (futuro)
   CSV_UPLOAD: 'csv:upload',
   
-  // IA (futuro)
+  // IA
   AI_QUERY: 'ai:query',
+  AI_ACCESS: 'ai:access', // Acesso a insights e análises com IA
   
   // Administração
   ADMIN_PANEL: 'admin:panel',

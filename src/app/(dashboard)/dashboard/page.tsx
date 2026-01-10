@@ -68,6 +68,9 @@ export default async function DashboardPage() {
   
   // FASE 11: Verificar permissão para mostrar link de importação (apenas UI)
   const hasImportAccess = await checkPermission(PERMISSIONS.CSV_UPLOAD);
+  
+  // FASE 12: Verificar permissão para mostrar link de insights (apenas UI)
+  const hasAIAccess = await checkPermission(PERMISSIONS.AI_ACCESS);
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -82,6 +85,14 @@ export default async function DashboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {hasAIAccess && (
+                <Link
+                  href="/dashboard/ai"
+                  className="px-4 py-2 text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-slate-800 rounded-lg transition-colors border border-purple-800"
+                >
+                  Insights IA
+                </Link>
+              )}
               {hasImportAccess && (
                 <Link
                   href="/dashboard/import"
