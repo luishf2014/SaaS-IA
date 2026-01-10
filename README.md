@@ -90,17 +90,29 @@ src/
 - Segurança sempre no server-side, UI apenas reflete permissões
 - **RBAC explicitamente SERVER-ONLY** - toda lógica de segurança protegida por `server-only`
 
-### ⏳ FASE 7: Dashboard Funcional
+### ✅ FASE 7: CRUD Administrativo Seguro (CONCLUÍDA)
+- Operações administrativas de usuários protegidas por RBAC
+- Server Actions protegidas por `requirePermission(PERMISSIONS.USER_MANAGE)`
+- **Criar usuários** (com profile vinculado à mesma company)
+- **Editar role de usuários** (com validação de company)
+- **Deletar usuários** (com validações de segurança)
+- **Listar usuários** (via Server Action dedicada)
+- Cliente Supabase Admin para operações privilegiadas
+- UI apenas chama Server Actions, nunca decide permissões
+- Todas as operações verificam permissão ANTES de executar
+- Page.tsx apenas renderiza, toda lógica em Server Actions
+
+### ⏳ FASE 8: Dashboard Funcional
 - Métricas financeiras (receita, despesas, lucro)
 - Gráficos por período
 - Dados reais do banco
 
-### ⏳ FASE 7: Upload de CSV
+### ⏳ FASE 9: Upload de CSV
 - Upload e validação de arquivos CSV
 - Processamento de vendas e despesas
 - Persistência no banco
 
-### ⏳ FASE 8: Integração com IA
+### ⏳ FASE 10: Integração com IA
 - Campo de perguntas em linguagem natural
 - Geração de insights financeiros
 - Respostas baseadas em dados reais
@@ -492,6 +504,128 @@ Para validar que a UI administrativa está funcionando:
 └─────────────────────────────────────────┘
 ```
 
+## ✅ Validação da FASE 7 (CRUD Administrativo Seguro)
+
+Para validar que o CRUD administrativo está funcionando:
+
+### Pré-requisitos
+
+1. **Configure a Service Role Key**:
+   - Acesse: https://supabase.com/dashboard
+   - Vá em **Settings** → **API**
+   - Copie a **service_role** key (não a anon key!)
+   - Adicione em `.env.local`:
+     ```env
+     SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key-aqui
+     ```
+   - ⚠️ **IMPORTANTE**: Esta chave nunca deve ser exposta ao cliente!
+
+2. **Tenha um usuário admin**:
+   - No Supabase Table Editor, altere `profiles.role` para 'admin' para um usuário
+
+### Testes de Validação
+
+1. **Teste Criar Usuário**:
+   - Faça login com usuário admin
+   - Acesse `/admin/users`
+   - Preencha o formulário "Criar Novo Usuário"
+   - Clique em "Criar Usuário"
+   - Verifique que o usuário aparece na lista
+   - Verifique no Supabase que o usuário foi criado em `auth.users` e `profiles`
+
+2. **Teste Editar Role**:
+   - Na lista de usuários, altere o role de um usuário usando o dropdown
+   - Verifique que o role é atualizado na tabela
+   - Recarregue a página - o role deve persistir
+
+3. **Teste Deletar Usuário**:
+   - Clique em "Deletar" em um usuário
+   - Confirme a exclusão
+   - Verifique que o usuário desaparece da lista
+   - Verifique no Supabase que o usuário foi removido
+
+4. **Teste de Segurança**:
+   - Tente criar/editar/deletar sem permissão (role 'user')
+   - Todas as ações devem falhar com erro de permissão
+   - Verifique que nenhuma mutação ocorre no banco
+
+**Arquivos criados na FASE 7:**
+- `src/app/(admin)/admin/users/actions.ts` - Server Actions protegidas por RBAC (leitura e escrita)
+- `src/app/(admin)/admin/users/CreateUserForm.tsx` - Formulário de criação (Client Component)
+- `src/app/(admin)/admin/users/UserActions.tsx` - Ações de editar/deletar (Client Component)
+- `src/lib/supabase/admin.ts` - Cliente Supabase Admin (SERVER-ONLY)
+- `src/app/(admin)/admin/users/page.tsx` - Apenas renderiza dados (sem lógica administrativa)
+
+**O que a FASE 7 implementa:**
+
+1. **Server Action de Leitura** (`getAdminUsers()`):
+   ```typescript
+   'use server';
+   import 'server-only';
+   import { requirePermission, PERMISSIONS } from '@/lib/rbac';
+   
+   export async function getAdminUsers(): Promise<AdminUserRow[]> {
+     await requirePermission(PERMISSIONS.USER_MANAGE); // PRIMEIRA linha
+     // lógica administrativa aqui
+   }
+   ```
+
+2. **Server Actions de Mutação** (`createUser`, `updateUserRole`, `deleteUser`):
+   ```typescript
+   'use server';
+   import 'server-only';
+   import { requirePermission, PERMISSIONS } from '@/lib/rbac';
+   
+   export async function createUser(...) {
+     await requirePermission(PERMISSIONS.USER_MANAGE); // PRIMEIRA linha
+     // mutação segura aqui
+   }
+   ```
+
+3. **DTO Explícito** (sem `any`):
+   ```typescript
+   export type AdminUserRow = {
+     id: string;
+     userId: string;
+     email: string;
+     role: 'admin' | 'user';
+     created_at: string;
+   };
+   ```
+
+4. **Page.tsx Apenas Renderiza**:
+   ```typescript
+   // page.tsx não executa lógica administrativa
+   const adminUsers = await getAdminUsers(); // Server Action
+   // apenas renderiza dados retornados
+   ```
+
+**Garantias da FASE 7:**
+- ✅ Todas as operações verificam permissão ANTES de executar
+- ✅ Server Actions são SERVER-ONLY
+- ✅ Page.tsx nunca usa admin client ou acessa auth.users diretamente
+- ✅ Toda leitura sensível passa por Server Action dedicada
+- ✅ DTO explícito substitui `any`
+- ✅ UI nunca decide permissões, apenas chama ações
+- ✅ Cliente Admin protegido e nunca exposto ao cliente
+- ✅ Validações de segurança (mesma company, não deletar a si mesmo)
+- ✅ Mensagens de erro não vazam dados sensíveis
+
+**O que a FASE 7 NÃO implementa:**
+- ❌ Auditoria de ações administrativas
+- ❌ Soft delete (apenas hard delete)
+- ❌ Logs de operações
+- ❌ Reset de senha via admin
+- ❌ Permissões granulares além de USER_MANAGE
+- ❌ Histórico de alterações
+
+**Importante:**
+- Service Role Key é obrigatória para operações administrativas
+- Todas as Server Actions começam com `requirePermission()`
+- Page.tsx apenas renderiza, nunca executa lógica administrativa
+- UI apenas coleta dados e exibe feedback
+- RBAC continua sendo a única fonte de verdade para permissões
+
 ---
 
-**Status**: FASE 6 concluída ✅ | Próxima fase: Dashboard Funcional
+**Status**: FASE 7 concluída ✅ | Próxima fase: Dashboard Funcional

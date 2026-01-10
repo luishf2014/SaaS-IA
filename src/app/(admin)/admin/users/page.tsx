@@ -1,12 +1,21 @@
 /**
  * Página de Gestão de Usuários
  * 
- * FASE 6: UI Administrativa Baseada em RBAC
+ * FASE 7: CRUD Administrativo Seguro
  * 
  * Protegida por requireRoutePermission(PERMISSIONS.USER_MANAGE).
  * Apenas usuários com permissão USER_MANAGE podem acessar.
  * 
- * Esta página apenas lê dados (não cria ou modifica nesta fase).
+ * IMPORTANTE: Esta página apenas renderiza dados.
+ * Toda lógica administrativa (leitura e escrita) ocorre em Server Actions.
+ * 
+ * Funcionalidades:
+ * - Listar usuários (via getAdminUsers() Server Action)
+ * - Criar novos usuários (via createUser() Server Action)
+ * - Editar role de usuários (via updateUserRole() Server Action)
+ * - Deletar usuários (via deleteUser() Server Action)
+ * 
+ * Todas as operações são protegidas por RBAC no server-side.
  */
 
 import { redirect } from 'next/navigation';
@@ -14,7 +23,9 @@ import { requireRoutePermission, PERMISSIONS, getUserWithRole } from '@/lib/rbac
 import { getUserProfile } from '@/lib/profile';
 import { signOut } from '@/app/(auth)/actions';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { getAdminUsers } from './actions';
+import CreateUserForm from './CreateUserForm';
+import UserActions from './UserActions';
 
 export default async function AdminUsersPage() {
   // Proteger rota usando RBAC (server-side)
@@ -28,16 +39,8 @@ export default async function AdminUsersPage() {
     redirect('/dashboard');
   }
 
-  // Obter lista de usuários da mesma empresa (apenas leitura)
-  const supabase = await createClient();
-  const { data: companyProfiles, error } = await supabase
-    .from('profiles')
-    .select('*, companies(*)')
-    .eq('company_id', userProfile.company.id)
-    .order('created_at', { ascending: false });
-
-  // Se houver erro ou não houver perfis, mostrar mensagem
-  const profiles = companyProfiles || [];
+  // Obter lista de usuários via Server Action (única forma de ler dados administrativos)
+  const adminUsers = await getAdminUsers();
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -87,6 +90,9 @@ export default async function AdminUsersPage() {
 
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Formulário de Criação */}
+        <CreateUserForm />
+
         {/* Informações */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 mb-6">
           <div className="flex items-center justify-between">
@@ -95,7 +101,7 @@ export default async function AdminUsersPage() {
                 Usuários da Empresa
               </h2>
               <p className="text-slate-400 text-sm">
-                Total de usuários: <span className="text-white font-semibold">{profiles.length}</span>
+                Total de usuários: <span className="text-white font-semibold">{adminUsers.length}</span>
               </p>
             </div>
             <div className="px-4 py-2 bg-blue-950/50 border border-blue-800 rounded-lg">
@@ -108,7 +114,7 @@ export default async function AdminUsersPage() {
 
         {/* Lista de Usuários */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-          {profiles.length === 0 ? (
+          {adminUsers.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-slate-400">Nenhum usuário encontrado.</p>
             </div>
@@ -118,7 +124,7 @@ export default async function AdminUsersPage() {
                 <thead className="bg-slate-800 border-b border-slate-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
-                      ID
+                      E-mail
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                       Role
@@ -132,31 +138,32 @@ export default async function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {profiles.map((profile: any) => (
-                    <tr key={profile.id} className="hover:bg-slate-800/50 transition-colors">
+                  {adminUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono text-slate-300">
-                          {profile.id.substring(0, 8)}...
-                        </div>
+                        <div className="text-sm text-slate-300">{user.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            profile.role === 'admin'
+                            user.role === 'admin'
                               ? 'bg-blue-950/50 text-blue-400 border border-blue-800'
                               : 'bg-slate-800 text-slate-300 border border-slate-700'
                           }`}
                         >
-                          {profile.role}
+                          {user.role}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                        {new Date(profile.created_at).toLocaleDateString('pt-BR')}
+                        {new Date(user.created_at).toLocaleDateString('pt-BR')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className="text-slate-500 italic">
-                          Ações em desenvolvimento
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <UserActions
+                          profileId={user.id}
+                          userId={user.userId}
+                          currentRole={user.role}
+                          userEmail={user.email}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -166,13 +173,6 @@ export default async function AdminUsersPage() {
           )}
         </div>
 
-        {/* Nota sobre Funcionalidades Futuras */}
-        <div className="mt-6 bg-blue-950/20 border border-blue-800/50 rounded-lg p-4">
-          <p className="text-sm text-blue-300">
-            <strong>Nota:</strong> Esta é uma visualização básica. Funcionalidades de criação,
-            edição e exclusão de usuários serão implementadas nas próximas fases.
-          </p>
-        </div>
       </main>
     </div>
   );
