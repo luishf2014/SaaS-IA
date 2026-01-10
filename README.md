@@ -102,7 +102,29 @@ src/
 - Todas as operações verificam permissão ANTES de executar
 - Page.tsx apenas renderiza, toda lógica em Server Actions
 
-### ⏳ FASE 8: Dashboard Funcional
+### ✅ FASE 8: Infraestrutura de Dados (CONCLUÍDA)
+- Schema completo do banco de dados criado
+- Tabelas `companies` e `profiles` com relacionamentos
+- Row Level Security (RLS) habilitado em todas as tabelas
+- Policies RLS para suportar `ensureUserProfile()`
+- Policies RLS para suportar CRUD administrativo
+- Índices para performance
+- Isolamento multi-tenant garantido por RLS
+- Migração idempotente e executável
+
+### ✅ FASE 9: Funcionalidades Administrativas Avançadas (CONCLUÍDA)
+- Hardening completo das Server Actions administrativas
+- Auditoria leve (logs estruturados no server-side)
+- Validações explícitas e robustas em todas as operações
+- Prevenção de auto-rebaixamento e auto-deleção
+- Prevenção de deleção do último admin
+- Mensagens de erro amigáveis (sem vazar detalhes técnicos)
+- UX administrativa melhorada (feedback visual, auto-dismiss, confirmações)
+- Estados vazios claros e informativos
+- DTOs padronizados para todas as Server Actions
+- Nenhuma alteração no banco de dados (apenas código)
+
+### ⏳ FASE 10: Dashboard Funcional
 - Métricas financeiras (receita, despesas, lucro)
 - Gráficos por período
 - Dados reais do banco
@@ -628,4 +650,207 @@ Para validar que o CRUD administrativo está funcionando:
 
 ---
 
-**Status**: FASE 7 concluída ✅ | Próxima fase: Dashboard Funcional
+## ✅ Validação da FASE 8 (Infraestrutura de Dados)
+
+Para validar que a infraestrutura de dados está funcionando:
+
+### Pré-requisitos
+
+1. **Execute a migração SQL**:
+   - Acesse: https://supabase.com/dashboard
+   - Vá em **SQL Editor** → **New Query**
+   - Abra o arquivo: `supabase/migrations/002_fase8_complete_schema.sql`
+   - **Copie TODO o conteúdo** e cole no SQL Editor
+   - Clique em **RUN**
+   - Aguarde aparecer "Success" ✅
+
+2. **Verifique as tabelas**:
+   - Vá em **Table Editor**
+   - Você deve ver:
+     - `companies` (com campos: id, name, owner_id, created_at)
+     - `profiles` (com campos: id, user_id, company_id, role, created_at)
+
+3. **Verifique as policies RLS**:
+   - Vá em **Table Editor** → clique em uma tabela → **Policies**
+   - Você deve ver várias policies criadas
+
+### Testes de Validação
+
+1. **Teste ensureUserProfile()**:
+   - Registre um novo usuário em `/register`
+   - Verifique no Supabase que:
+     - Uma entrada foi criada em `companies` (com `owner_id` = user.id)
+     - Uma entrada foi criada em `profiles` (com `user_id` = user.id e `company_id` vinculado)
+
+2. **Teste CRUD Administrativo**:
+   - Faça login com usuário admin
+   - Acesse `/admin/users`
+   - Tente criar um novo usuário
+   - Verifique que o usuário aparece na lista
+   - Tente editar o role de um usuário
+   - Verifique que o role é atualizado
+   - Tente deletar um usuário
+   - Verifique que o usuário é removido
+
+3. **Teste de Isolamento Multi-Tenant**:
+   - Crie dois usuários diferentes (cada um terá sua própria company)
+   - Faça login com o primeiro usuário
+   - Verifique que ele só vê usuários da própria company
+   - Faça login com o segundo usuário
+   - Verifique que ele só vê usuários da própria company
+   - Nenhum acesso cruzado deve ser possível
+
+**Arquivos criados na FASE 8:**
+- `supabase/migrations/002_fase8_complete_schema.sql` - Migração SQL completa
+- `EXECUTAR_MIGRACAO_FASE8.md` - Instruções de execução
+
+**O que a FASE 8 implementa:**
+
+1. **Tabelas**:
+   ```sql
+   -- companies
+   CREATE TABLE public.companies (
+     id UUID PRIMARY KEY,
+     name TEXT NOT NULL,
+     owner_id UUID REFERENCES auth.users,
+     created_at TIMESTAMP
+   );
+   
+   -- profiles
+   CREATE TABLE public.profiles (
+     id UUID PRIMARY KEY,
+     user_id UUID REFERENCES auth.users (UNIQUE),
+     company_id UUID REFERENCES companies,
+     role TEXT CHECK (role IN ('admin', 'user')),
+     created_at TIMESTAMP
+   );
+   ```
+
+2. **Row Level Security (RLS)**:
+   - RLS habilitado em `companies` e `profiles`
+   - Policies para usuários comuns (ver/criar próprio)
+   - Policies para admins (gerenciar mesma company)
+   - Isolamento total entre companies
+
+3. **Índices**:
+   - Performance em buscas por `owner_id`, `user_id`, `company_id`
+   - Performance em ordenação por `created_at`
+   - Performance em filtros por `role`
+
+**Garantias da FASE 8:**
+- ✅ Schema completo e funcional
+- ✅ Compatível com código existente (sem alterações necessárias)
+- ✅ RLS garante isolamento multi-tenant
+- ✅ Policies permitem operações administrativas seguras
+- ✅ Migração idempotente (pode executar múltiplas vezes)
+- ✅ Índices para performance adequada
+
+**Importante:**
+- Execute a migração ANTES de testar funcionalidades administrativas
+- A migração é idempotente (segura para executar múltiplas vezes)
+- RLS é a última linha de defesa (além do RBAC no código)
+- Nenhuma alteração no código TypeScript é necessária
+
+---
+
+## ✅ Validação da FASE 9 (Funcionalidades Administrativas Avançadas)
+
+Para validar que as melhorias administrativas estão funcionando:
+
+### Testes de Validação
+
+1. **Teste Hardening das Server Actions**:
+   - Tente criar usuário com email inválido → deve mostrar erro amigável
+   - Tente criar usuário com senha curta → deve mostrar erro claro
+   - Tente atualizar role para o mesmo valor → deve ignorar
+   - Tente deletar a si mesmo → deve bloquear com mensagem clara
+
+2. **Teste Prevenções de Segurança**:
+   - Se você for o único admin, tente rebaixar a si mesmo → deve bloquear
+   - Se você for o único admin, tente deletar outro admin → deve bloquear
+   - Tente deletar usuário de outra company → deve bloquear
+
+3. **Teste UX Melhorada**:
+   - Crie um usuário → mensagem de sucesso deve aparecer e desaparecer automaticamente
+   - Atualize um role → feedback deve aparecer próximo à ação
+   - Tente deletar → confirmação deve aparecer antes da ação
+   - Verifique estado vazio → deve mostrar mensagem clara quando não houver usuários
+
+4. **Teste Auditoria**:
+   - Execute ações administrativas (criar, atualizar, deletar)
+   - Verifique os logs no console do servidor (dev mode)
+   - Deve ver logs estruturados com `[ADMIN_ACTION]` contendo timestamp, ação, IDs
+
+**Arquivos modificados na FASE 9:**
+- `src/app/(admin)/admin/users/actions.ts` - Hardening, auditoria leve, validações robustas
+- `src/app/(admin)/admin/users/CreateUserForm.tsx` - UX melhorada, auto-dismiss, feedback visual
+- `src/app/(admin)/admin/users/UserActions.tsx` - Confirmações melhoradas, feedback contextual
+- `src/app/(admin)/admin/users/page.tsx` - Estado vazio melhorado
+
+**O que a FASE 9 implementa:**
+
+1. **Hardening das Server Actions**:
+   ```typescript
+   // Todas começam com requirePermission() na primeira linha
+   await requirePermission(PERMISSIONS.USER_MANAGE);
+   
+   // Validações explícitas e robustas
+   if (!email || !emailRegex.test(email)) {
+     return { success: false, error: 'E-mail inválido' };
+   }
+   
+   // Prevenções de segurança
+   if (targetProfile.role === ROLES.ADMIN && newRole === ROLES.USER) {
+     // Verificar se há outros admins
+   }
+   ```
+
+2. **Auditoria Leve**:
+   ```typescript
+   function logAdminAction(action, adminUserId, targetUserId, details) {
+     console.log('[ADMIN_ACTION]', {
+       timestamp: new Date().toISOString(),
+       action,
+       adminUserId,
+       targetUserId,
+       ...details,
+     });
+   }
+   ```
+
+3. **UX Melhorada**:
+   - Mensagens de sucesso com auto-dismiss (5 segundos)
+   - Ícones visuais para feedback (sucesso/erro)
+   - Confirmações claras antes de ações destrutivas
+   - Estados vazios informativos
+   - Mensagens amigáveis sem vazar detalhes técnicos
+
+4. **DTOs Padronizados**:
+   ```typescript
+   export type AdminActionResult = {
+     success: boolean;
+     error?: string;
+     message?: string;
+     data?: unknown; // Dados adicionais quando necessário
+   };
+   ```
+
+**Garantias da FASE 9:**
+- ✅ Todas as Server Actions começam com `requirePermission()` na primeira linha
+- ✅ Validações explícitas em todas as operações
+- ✅ Prevenções de segurança implementadas (auto-rebaixamento, auto-deleção, último admin)
+- ✅ Mensagens de erro amigáveis (sem vazar detalhes técnicos)
+- ✅ Auditoria leve funcionando (logs estruturados)
+- ✅ UX profissional com feedback visual claro
+- ✅ Nenhuma alteração no banco de dados
+- ✅ Código compatível com FASES anteriores
+
+**Importante:**
+- Nenhum SQL foi criado ou modificado nesta fase
+- Toda lógica está no código TypeScript
+- Auditoria é apenas em logs (console), não em banco
+- Segurança continua sendo garantida pelo RBAC + RLS
+
+---
+
+**Status**: FASE 9 concluída ✅ | Próxima fase: Dashboard Funcional

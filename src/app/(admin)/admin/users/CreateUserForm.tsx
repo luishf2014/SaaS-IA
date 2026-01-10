@@ -2,6 +2,7 @@
  * Formulário para criar novo usuário
  * 
  * FASE 7: CRUD Administrativo Seguro
+ * FASE 9: Funcionalidades Administrativas Avançadas
  * 
  * Client Component que chama Server Action protegida por RBAC.
  * UI apenas coleta dados e exibe feedback, nunca decide permissões.
@@ -9,7 +10,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createUser, type AdminActionResult } from './actions';
 
 export default function CreateUserForm() {
@@ -18,6 +19,16 @@ export default function CreateUserForm() {
   const [role, setRole] = useState<'admin' | 'user'>('user');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AdminActionResult | null>(null);
+
+  // FASE 9: Auto-dismiss de mensagens de sucesso
+  useEffect(() => {
+    if (result?.success) {
+      const timer = setTimeout(() => {
+        setResult(null);
+      }, 5000); // 5 segundos
+      return () => clearTimeout(timer);
+    }
+  }, [result]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +48,7 @@ export default function CreateUserForm() {
     } catch (error) {
       setResult({
         success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido ao criar usuário',
       });
     } finally {
       setLoading(false);
@@ -114,20 +125,48 @@ export default function CreateUserForm() {
           </button>
         </div>
 
-        {/* Feedback */}
+        {/* Feedback - FASE 9: Melhorado */}
         {result && (
           <div
-            className={`p-4 rounded-lg border ${
+            className={`p-4 rounded-lg border transition-all ${
               result.success
                 ? 'bg-green-950/50 border-green-800 text-green-300'
                 : 'bg-red-950/50 border-red-800 text-red-300'
             }`}
           >
-            {result.success ? (
-              <p className="text-sm font-semibold">{result.message}</p>
-            ) : (
-              <p className="text-sm font-semibold">{result.error}</p>
-            )}
+            <div className="flex items-start gap-2">
+              {result.success ? (
+                <>
+                  <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{result.message}</p>
+                    {result.success && (
+                      <p className="text-xs text-green-400/70 mt-1">Esta mensagem desaparecerá automaticamente em alguns segundos.</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{result.error}</p>
+                  </div>
+                </>
+              )}
+              <button
+                onClick={() => setResult(null)}
+                className="text-slate-400 hover:text-slate-300 transition-colors"
+                aria-label="Fechar mensagem"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
       </form>

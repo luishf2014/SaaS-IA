@@ -112,11 +112,17 @@ export default async function AdminUsersPage() {
           </div>
         </div>
 
-        {/* Lista de Usuários */}
+        {/* Lista de Usuários - FASE 9: Estado vazio melhorado */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
           {adminUsers.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-slate-400">Nenhum usuário encontrado.</p>
+            <div className="p-12 text-center">
+              <svg className="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <h3 className="text-lg font-semibold text-slate-300 mb-2">Nenhum usuário encontrado</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Crie o primeiro usuário da empresa usando o formulário acima.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
