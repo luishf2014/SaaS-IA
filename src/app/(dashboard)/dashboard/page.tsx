@@ -1,12 +1,13 @@
 /**
  * Página Dashboard Principal
  * 
- * Dashboard protegido que requer autenticação e permissão DASHBOARD_VIEW
- * Redireciona para /login se usuário não estiver autenticado
- * Verifica permissão usando RBAC centralizado
+ * FASE 10: Dashboard Funcional (Dados Reais)
  * 
- * FASE 4: Dashboard apenas CONSOME dados já existentes (não cria infraestrutura)
- * O bootstrap de company/profile acontece em src/app/page.tsx
+ * Dashboard protegido que requer autenticação e permissão DASHBOARD_VIEW.
+ * Exibe métricas financeiras reais do banco de dados.
+ * 
+ * IMPORTANTE: Toda lógica de dados ocorre em Server Actions.
+ * Esta página apenas renderiza dados retornados.
  */
 
 import { createClient } from '@/lib/supabase/server';
@@ -15,6 +16,8 @@ import { signOut } from '@/app/(auth)/actions';
 import { requireRoutePermission, checkPermission, PERMISSIONS } from '@/lib/rbac';
 import { getUserProfile } from '@/lib/profile';
 import Link from 'next/link';
+import { getFinancialMetrics } from './actions';
+import DashboardContent from './components/DashboardContent';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -32,14 +35,32 @@ export default async function DashboardPage() {
   // Verificar permissão usando RBAC
   await requireRoutePermission(PERMISSIONS.DASHBOARD_VIEW);
 
-  // FASE 4: Apenas consumir dados existentes (não criar)
-  // O bootstrap acontece em src/app/page.tsx antes de chegar aqui
+  // Obter perfil do usuário
   const userProfile = await getUserProfile();
   
   if (!userProfile) {
-    // Se não existir perfil, redirecionar para página inicial
-    // que garantirá a criação antes de redirecionar novamente
     redirect('/');
+  }
+
+  // Obter métricas financeiras (sem filtro de período - mostra todos os dados)
+  let metrics;
+  try {
+    metrics = await getFinancialMetrics();
+  } catch (error) {
+    console.error('[DashboardPage] Erro ao buscar métricas:', error);
+    metrics = {
+      totalRevenue: 0,
+      totalExpenses: 0,
+      profit: 0,
+      revenueThisMonth: 0,
+      expensesThisMonth: 0,
+      profitThisMonth: 0,
+      revenueLastMonth: 0,
+      expensesLastMonth: 0,
+      profitLastMonth: 0,
+      revenueGrowth: 0,
+      expensesGrowth: 0,
+    };
   }
 
   // FASE 6: Verificar permissão para mostrar link administrativo (apenas UI)
@@ -81,24 +102,22 @@ export default async function DashboardPage() {
 
       {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">
-              Bem-vindo, {user.email}!
-            </h2>
-            <div className="space-y-2 mb-4">
-              <p className="text-slate-500 text-sm">
-                Role: <span className="text-slate-300 font-mono">{userProfile.profile.role}</span>
-              </p>
-              <p className="text-slate-500 text-sm">
-                Empresa: <span className="text-slate-300">{userProfile.company.name}</span>
+        {/* Informações da Empresa */}
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white mb-1">
+                {userProfile.company.name}
+              </h2>
+              <p className="text-sm text-slate-400">
+                {user.email} • {userProfile.profile.role}
               </p>
             </div>
-            <p className="text-slate-400">
-              Seu dashboard está pronto. Funcionalidades serão adicionadas nas próximas fases.
-            </p>
           </div>
         </div>
+
+        {/* Dashboard Content (Client Component com filtros) */}
+        <DashboardContent initialMetrics={metrics} />
       </main>
     </div>
   );

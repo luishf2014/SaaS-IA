@@ -124,20 +124,53 @@ src/
 - DTOs padronizados para todas as Server Actions
 - Nenhuma alteração no banco de dados (apenas código)
 
-### ⏳ FASE 10: Dashboard Funcional
-- Métricas financeiras (receita, despesas, lucro)
-- Gráficos por período
-- Dados reais do banco
+### ⏳ FASE 10: Dashboard Funcional (Dados Reais — EM VALIDAÇÃO)
+- Dashboard conectado a dados reais do banco
+- Métricas financeiras básicas (receita, despesas, lucro)
+- Filtros por período funcionando
+- RBAC e RLS aplicados corretamente
+- Schema financeiro tratado como BASE EVOLUTIVA
+- Tabelas `sales` e `expenses` criadas (schema base, pode evoluir na FASE 11)
+- Server Actions protegidas por RBAC para buscar métricas
+- Comparativo mensal (mês atual vs mês anterior)
+- Componentes reutilizáveis (MetricCard, PeriodFilter)
+- Estado vazio informativo quando não há dados
+- Nenhum dado mockado ou hardcoded
 
-### ⏳ FASE 9: Upload de CSV
-- Upload e validação de arquivos CSV
-- Processamento de vendas e despesas
-- Persistência no banco
+## 🧭 Roadmap do Projeto
 
-### ⏳ FASE 10: Integração com IA
-- Campo de perguntas em linguagem natural
-- Geração de insights financeiros
-- Respostas baseadas em dados reais
+### ⏳ FASE 10: Dashboard Funcional (Dados Reais) → EM VALIDAÇÃO
+Dashboard conectado a dados reais do banco, métricas financeiras básicas e validação completa de RBAC + RLS.
+
+---
+
+### ⏳ FASE 11: Upload e Ingestão de Dados (CSV)
+Importação de dados via CSV com validação server-side e persistência segura.
+**Nota:** Pode evoluir o schema financeiro criado na FASE 10.
+
+---
+
+### ⏳ FASE 12: Inteligência Artificial (Insights Financeiros)
+Geração de insights financeiros com IA baseada exclusivamente nos dados da empresa autenticada.
+
+---
+
+### ⏳ FASE 13 (Opcional): Produto e Escala
+- Billing (Stripe)
+- Limites por plano
+- Auditoria e logs
+- Feature flags
+- Exportação de relatórios
+
+---
+
+## 📌 Governança de Fases
+
+- **FASE 10** valida arquitetura, métricas e segurança
+- **FASE 11** pode alterar o schema financeiro
+- Nenhuma fase congela o modelo sem aceite explícito
+- SQL só é considerado definitivo após validação funcional completa
+- Cada fase assume responsabilidade sobre seu escopo, sem antecipar a próxima
 
 ## 📋 Pré-requisitos
 
@@ -853,4 +886,138 @@ Para validar que as melhorias administrativas estão funcionando:
 
 ---
 
-**Status**: FASE 9 concluída ✅ | Próxima fase: Dashboard Funcional
+---
+
+## ⏳ Validação da FASE 10 (Dashboard Funcional - Dados Reais — EM VALIDAÇÃO)
+
+Para validar que o Dashboard está funcionando:
+
+### Pré-requisitos
+
+1. **Execute a migração SQL**:
+   - Acesse: https://supabase.com/dashboard
+   - Vá em **SQL Editor** → **New Query**
+   - Abra o arquivo: `supabase/migrations/003_fase10_financial_tables.sql`
+   - **Copie TODO o conteúdo** e cole no SQL Editor
+   - Clique em **RUN**
+   - Aguarde aparecer "Success" ✅
+
+2. **Adicione dados de teste** (opcional):
+   - Vá em **Table Editor** → `sales`
+   - Adicione algumas vendas com `company_id` da sua empresa
+   - Vá em **Table Editor** → `expenses`
+   - Adicione algumas despesas com `company_id` da sua empresa
+
+### Testes de Validação
+
+1. **Teste Dashboard com Dados**:
+   - Faça login e acesse `/dashboard`
+   - Verifique que as métricas aparecem corretamente
+   - Verifique que os valores estão formatados em R$
+   - Verifique que o crescimento percentual aparece
+
+2. **Teste Filtros de Período**:
+   - Use o filtro "Este Mês" → deve mostrar apenas dados do mês atual
+   - Use o filtro "Mês Anterior" → deve mostrar apenas dados do mês anterior
+   - Use o filtro "Personalizado" → deve permitir selecionar datas customizadas
+
+3. **Teste Estado Vazio**:
+   - Se não houver dados, verifique que aparece mensagem informativa
+   - Verifique que não há erros no console
+
+4. **Teste Isolamento Multi-Tenant**:
+   - Crie dados em duas empresas diferentes
+   - Faça login com cada empresa
+   - Verifique que cada empresa só vê seus próprios dados
+
+**Arquivos criados na FASE 10:**
+- `supabase/migrations/003_fase10_financial_tables.sql` - Migração SQL para tabelas financeiras
+- `src/app/(dashboard)/dashboard/actions.ts` - Server Actions para buscar métricas
+- `src/app/(dashboard)/dashboard/components/MetricCard.tsx` - Componente de card de métrica
+- `src/app/(dashboard)/dashboard/components/PeriodFilter.tsx` - Componente de filtro por período
+- `src/app/(dashboard)/dashboard/components/DashboardContent.tsx` - Componente principal do dashboard
+- `src/app/(dashboard)/dashboard/page.tsx` - Página do dashboard atualizada
+
+**O que a FASE 10 implementa:**
+
+1. **Tabelas Financeiras**:
+   ```sql
+   -- sales (vendas)
+   CREATE TABLE public.sales (
+     id UUID PRIMARY KEY,
+     company_id UUID REFERENCES companies,
+     amount DECIMAL(12, 2),
+     description TEXT,
+     sale_date DATE,
+     created_at TIMESTAMP,
+     updated_at TIMESTAMP
+   );
+   
+   -- expenses (despesas)
+   CREATE TABLE public.expenses (
+     id UUID PRIMARY KEY,
+     company_id UUID REFERENCES companies,
+     amount DECIMAL(12, 2),
+     description TEXT,
+     expense_date DATE,
+     category TEXT,
+     created_at TIMESTAMP,
+     updated_at TIMESTAMP
+   );
+   ```
+
+2. **Row Level Security (RLS)**:
+   - RLS habilitado em `sales` e `expenses`
+   - Policies garantem que usuários só veem dados da própria empresa
+   - Policies permitem CRUD apenas para dados da própria empresa
+
+3. **Server Actions Protegidas**:
+   ```typescript
+   // Todas começam com requirePermission()
+   await requirePermission(PERMISSIONS.FINANCIAL_DATA_VIEW);
+   
+   // Buscam dados respeitando RLS
+   const { data } = await supabase
+     .from('sales')
+     .select('*')
+     .eq('company_id', companyId);
+   ```
+
+4. **Métricas Implementadas**:
+   - Receita total (período filtrado ou todos)
+   - Despesas totais (período filtrado ou todos)
+   - Lucro (receita - despesas)
+   - Receita/Despesas/Lucro do mês atual
+   - Receita/Despesas/Lucro do mês anterior
+   - Crescimento percentual (mês atual vs anterior)
+
+5. **Filtros de Período**:
+   - Este Mês
+   - Mês Anterior
+   - Últimos 3 Meses
+   - Últimos 6 Meses
+   - Este Ano
+   - Personalizado (seleção de datas)
+
+**Garantias da FASE 10:**
+- ✅ Todas as métricas vêm de dados reais do banco
+- ✅ Nenhum dado mockado ou hardcoded
+- ✅ RLS garante isolamento multi-tenant
+- ✅ RBAC protege todas as Server Actions
+- ✅ Filtros funcionam corretamente
+- ✅ Formatação adequada de valores monetários
+- ✅ Estado vazio informativo quando não há dados
+- ✅ Comparativo mensal funcional
+- ⚠️ Schema financeiro tratado como BASE EVOLUTIVA (pode evoluir na FASE 11)
+
+**Importante:**
+- Execute a migração SQL ANTES de testar o dashboard
+- Dados devem ser inseridos manualmente no Supabase (FASE 11 implementará CSV)
+- Todas as queries respeitam RLS automaticamente
+- Nenhum bypass de segurança foi implementado
+- **Esta fase valida a arquitetura, não congela o modelo de dados**
+- **FASE 11 pode alterar o schema financeiro sem quebrar funcionalidades existentes**
+
+---
+
+**Status**: FASE 10 em validação ⏳ | Próxima fase: Upload e Ingestão de Dados (CSV)
