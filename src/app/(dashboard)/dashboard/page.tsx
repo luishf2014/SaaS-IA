@@ -65,6 +65,9 @@ export default async function DashboardPage() {
 
   // FASE 6: Verificar permissão para mostrar link administrativo (apenas UI)
   const hasAdminAccess = await checkPermission(PERMISSIONS.ADMIN_PANEL);
+  
+  // FASE 11: Verificar permissão para mostrar link de importação (apenas UI)
+  const hasImportAccess = await checkPermission(PERMISSIONS.CSV_UPLOAD);
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -79,6 +82,14 @@ export default async function DashboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {hasImportAccess && (
+                <Link
+                  href="/dashboard/import"
+                  className="px-4 py-2 text-sm font-medium text-green-400 hover:text-green-300 hover:bg-slate-800 rounded-lg transition-colors border border-green-800"
+                >
+                  Importar CSV
+                </Link>
+              )}
               {hasAdminAccess && (
                 <Link
                   href="/admin"

@@ -124,7 +124,7 @@ src/
 - DTOs padronizados para todas as Server Actions
 - Nenhuma alteração no banco de dados (apenas código)
 
-### ⏳ FASE 10: Dashboard Funcional (Dados Reais — EM VALIDAÇÃO)
+### ✅ FASE 10: Dashboard Funcional (Dados Reais) (CONCLUÍDA)
 - Dashboard conectado a dados reais do banco
 - Métricas financeiras básicas (receita, despesas, lucro)
 - Filtros por período funcionando
@@ -137,16 +137,29 @@ src/
 - Estado vazio informativo quando não há dados
 - Nenhum dado mockado ou hardcoded
 
+### ✅ FASE 11: Upload e Ingestão de Dados (CSV) (CONCLUÍDA)
+- Upload de arquivos CSV para vendas e despesas
+- Server Actions protegidas por RBAC (`PERMISSIONS.CSV_UPLOAD`)
+- Parser de CSV robusto com suporte a valores entre aspas
+- Validação completa de dados antes da inserção
+- Suporte a formatos de data ISO (YYYY-MM-DD) e BR (DD/MM/YYYY)
+- Tratamento de valores monetários (aceita vírgula ou ponto como separador)
+- Relatório de erros detalhado (linhas ignoradas e motivos)
+- Isolamento multi-tenant garantido (company_id sempre do contexto autenticado)
+- Auditoria leve (logs server-side estruturados)
+- UI profissional com feedback visual claro
+- Revalidação automática do dashboard após importação
+
 ## 🧭 Roadmap do Projeto
 
-### ⏳ FASE 10: Dashboard Funcional (Dados Reais) → EM VALIDAÇÃO
+### ✅ FASE 10: Dashboard Funcional (Dados Reais) (CONCLUÍDA)
 Dashboard conectado a dados reais do banco, métricas financeiras básicas e validação completa de RBAC + RLS.
 
 ---
 
-### ⏳ FASE 11: Upload e Ingestão de Dados (CSV)
+### ✅ FASE 11: Upload e Ingestão de Dados (CSV) (CONCLUÍDA)
 Importação de dados via CSV com validação server-side e persistência segura.
-**Nota:** Pode evoluir o schema financeiro criado na FASE 10.
+Sistema completo de upload com parser robusto, validação de dados e isolamento multi-tenant.
 
 ---
 
@@ -1020,4 +1033,118 @@ Para validar que o Dashboard está funcionando:
 
 ---
 
-**Status**: FASE 10 em validação ⏳ | Próxima fase: Upload e Ingestão de Dados (CSV)
+## ✅ Validação da FASE 11 (Upload e Ingestão de Dados - CSV)
+
+Para validar que o sistema de importação CSV está funcionando:
+
+### Pré-requisitos
+
+1. **Execute a migração SQL da FASE 10** (se ainda não executou):
+   - Siga as instruções em `EXECUTAR_MIGRACAO_FASE10.md`
+   - Isso cria as tabelas `sales` e `expenses` com RLS.
+
+2. **Tenha um usuário logado**:
+   - Acesse `/register` e crie uma conta
+   - Faça login
+
+### Testes de Validação
+
+1. **Teste Upload de Vendas**:
+   - Acesse `/dashboard/import`
+   - Selecione "Vendas" como tipo de dados
+   - Crie um arquivo CSV com formato:
+     ```csv
+     amount,description,sale_date
+     1500.00,Venda de produto X,2024-01-15
+     2300.50,Venda de produto Y,2024-01-16
+     ```
+   - Faça upload do arquivo
+   - Verifique que aparece mensagem de sucesso
+   - Acesse `/dashboard` e verifique que as vendas aparecem nas métricas
+
+2. **Teste Upload de Despesas**:
+   - Acesse `/dashboard/import`
+   - Selecione "Despesas" como tipo de dados
+   - Crie um arquivo CSV com formato:
+     ```csv
+     amount,description,expense_date,category
+     500.00,Aluguel do escritório,2024-01-15,Operacional
+     200.00,Internet,2024-01-16,Operacional
+     ```
+   - Faça upload do arquivo
+   - Verifique que aparece mensagem de sucesso
+   - Acesse `/dashboard` e verifique que as despesas aparecem nas métricas
+
+3. **Teste Validação de Dados**:
+   - Tente fazer upload de CSV com dados inválidos (datas inválidas, valores negativos, etc.)
+   - Verifique que linhas inválidas são ignoradas e aparece relatório de erros
+   - Verifique que apenas linhas válidas são importadas
+
+4. **Teste Isolamento Multi-Tenant**:
+   - Faça login com uma empresa
+   - Importe dados
+   - Faça login com outra empresa
+   - Verifique que os dados importados pertencem apenas à empresa correta
+
+5. **Teste Permissões**:
+   - Tente acessar `/dashboard/import` sem permissão (se possível)
+   - Verifique que o acesso é bloqueado
+
+**Arquivos criados na FASE 11:**
+- `src/lib/csv/parseCSV.ts` - Parser de CSV (server-only)
+- `src/lib/csv/validators.ts` - Validadores de dados CSV (server-only)
+- `src/app/(dashboard)/dashboard/import/actions.ts` - Server Actions de importação
+- `src/app/(dashboard)/dashboard/import/ImportForm.tsx` - Formulário de upload (Client Component)
+- `src/app/(dashboard)/dashboard/import/page.tsx` - Página de importação
+
+**O que a FASE 11 implementa:**
+
+1. **Parser de CSV**:
+   - Suporta valores entre aspas
+   - Normaliza headers (lowercase, trim)
+   - Valida estrutura do CSV
+
+2. **Validadores de Dados**:
+   - Validação de campos obrigatórios
+   - Validação de tipos (números, datas)
+   - Validação de formatos (datas ISO e BR)
+   - Validação de valores (não negativos)
+
+3. **Server Actions Protegidas**:
+   ```typescript
+   // Todas começam com requirePermission()
+   await requirePermission(PERMISSIONS.CSV_UPLOAD);
+   
+   // company_id sempre vem do contexto autenticado
+   const userProfile = await getUserProfile();
+   const companyId = userProfile.company.id;
+   ```
+
+4. **UI de Upload**:
+   - Seleção de tipo de dados (vendas/despesas)
+   - Upload de arquivo CSV
+   - Feedback visual (loading, sucesso, erro)
+   - Relatório de erros detalhado
+
+**Garantias da FASE 11:**
+- ✅ Upload funciona para CSV válido
+- ✅ Dados aparecem no dashboard após importação
+- ✅ Dados pertencem apenas à company correta
+- ✅ Usuário sem permissão não consegue importar
+- ✅ Erros são amigáveis e claros
+- ✅ Nenhum dado inválido quebra o sistema
+- ✅ Nenhuma alteração quebra FASES 1-10
+- ✅ Auditoria leve funcionando (logs estruturados)
+- ✅ Revalidação automática do dashboard
+
+**Importante:**
+- Execute a migração SQL da FASE 10 ANTES de testar o upload
+- Formato CSV deve seguir exatamente o especificado
+- Datas podem estar em formato ISO (YYYY-MM-DD) ou BR (DD/MM/YYYY)
+- Valores monetários podem usar vírgula ou ponto como separador decimal
+- Linhas inválidas são ignoradas, mas não quebram a importação
+- Todos os dados são vinculados automaticamente à company do usuário autenticado
+
+---
+
+**Status**: FASE 11 concluída ✅ | Próxima fase: Inteligência Artificial (Insights Financeiros)
